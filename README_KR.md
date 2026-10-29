@@ -19,6 +19,37 @@ pip install antemortem
 
 ---
 
+## 시작 · 단독 사용 · 도킹
+
+**Omega Aile** — Quiet precision. AI research guided by evidence.
+
+구현 전 위험 문서를 만들고 provider로 분류한 뒤, 스키마·디스크 인용·근거 결합을 오프라인에서 검사합니다. PyPI 이름은 antemortem입니다.
+
+Python 3.11 이상에서 실행합니다. 설치에는 인터넷이 필요합니다.
+
+```bash
+python -m pip install antemortem==0.12.0
+antemortem init first-check
+antemortem doctor antemortem/first-check.md --repo .
+antemortem lint antemortem/first-check.md --repo .
+```
+
+새 scaffold는 빈 입력입니다. doctor는 NOT_READY와 exit 1, lint도 trap/파일 누락으로 exit 1을 반환합니다. 생성한 문서의 변경 내용·trap·파일 목록을 채운 뒤 다시 검사하세요.
+
+init은 패키지 템플릿을 만들고 doctor/lint는 provider 호출 없이 검사합니다. 초안에는 완료된 run artifact가 없어 기본 gate는 차단해야 합니다. run에는 provider 설정이 필요합니다. 인용 위치의 유효성이 주장 전체의 진실을 보장하지 않습니다. omega-lock과는 CI 인용 관계이며 런타임 의존성이 없습니다.
+
+[실제 연결 방식과 입력·출력](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [전체 안내](README.md). 두 mini 도구의 현재 검증 조합은 omegaprompt 2.1.2이며, 별도 배포 패키지입니다.
+
+MCP는 해당 배포명의 `[mcp]` extras와 기존 서버 명령을 사용합니다. 기존 FastMCP 계약은 SDK `>=1.0.0,<2.0.0` 범위로 유지합니다.
+
+## 반복 인용 검사와 근거의 한계
+
+같은 파일을 여러 번 인용하는 artifact는 한 명령 동안 제한된 읽기 캐시를 재사용합니다. 이전 공개 버전과 비교한 고정 오프라인 입력에서, 2,000줄 파일을 200회 인용할 때 **metrics의 파일 열기 400회, lint/gate JSON의 800회를 각각 1회로 줄였습니다.** 이는 파일 I/O 측정이며 전체 실행 배속이나 모델 품질을 뜻하지 않습니다. [방법·결과·이행 안내](docs/citation_verification_kr.md).
+
+`verified`는 경로·라인의 존재와 제공된 근거 결합의 일치를 뜻합니다. 근거가 주장을 논리적으로 뒷받침하는지, 프로그램이 올바른지는 증명하지 않습니다. 호환 필드 `fabricated`에는 오래된 근거와 읽기 실패도 포함되므로 의도적 조작을 판정하는 값이 아닙니다. metrics·lint·runtime citation audit·MCP·Action에서 제공된 snippet과 이전 hash를 같은 규칙으로 검사합니다. JSON schema와 종료 코드는 유지하지만, 이전 metrics가 통과시킨 잘못된 결합은 이제 실패할 수 있습니다.
+
+
+
 ## 한 화면으로 보는 문제
 
 2026년, 당신의 에이전트 — Claude Code, Cursor, Copilot, Aider — 는 계획과 패치를 작성한 뒤, 기존 코드에 대해 안전하다고 자신 있게 말합니다. 하지만 **에이전트가 실제로 repo를 읽었는지, 아니면 안심시키는 답을 환각한 것인지 빠르게 확인할 방법이 없습니다.**
@@ -111,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hibou04-ops/antemortem-cli@v0.11.1
+      - uses: hibou04-ops/antemortem-cli@v0.12.0
         with:
           document: antemortem/my-feature.md
           repo: .

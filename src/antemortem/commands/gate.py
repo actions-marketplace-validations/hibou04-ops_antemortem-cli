@@ -24,6 +24,7 @@ from pathlib import Path
 import typer
 
 from antemortem.citation_metrics import compute_citation_metrics
+from antemortem.citations import CitationVerifier
 from antemortem.commands.lint import run_lint
 from antemortem.decision import DECISION_LABELS as VALID_DECISIONS
 from antemortem.exit_codes import (
@@ -44,7 +45,9 @@ def _parse_allow(allow: str) -> tuple[set[str], list[str]]:
     return set(raw), unknown
 
 
-def _citation_metrics_json(artifact_path: Path, repo: Path) -> dict | None:
+def _citation_metrics_json(
+    artifact_path: Path, repo: Path, *, verifier: CitationVerifier | None = None,
+) -> dict | None:
     """Best-effort fabricated-citation metrics for the gate JSON summary.
 
     Returns None when the artifact is absent or unparseable — those
@@ -59,12 +62,13 @@ def _citation_metrics_json(artifact_path: Path, repo: Path) -> dict | None:
         )
     except Exception:  # noqa: BLE001 — metrics are best-effort; verdict is authoritative.
         return None
-    return compute_citation_metrics(output, repo).to_json()
+    return compute_citation_metrics(output, repo, verifier=verifier).to_json()
 
 
 def gate(
     document: Path = typer.Argument(  # noqa: B008
         ...,
+        metavar="DOCUMENT",
         help="Path to the antemortem document to gate.",
         exists=True,
         file_okay=True,
@@ -122,6 +126,7 @@ def gate(
         )
         raise typer.Exit(code=USAGE_ERROR)
 
+    verifier = CitationVerifier(repo)
     artifact_path_for_json = document.with_suffix(".json")
 
     def _emit_and_exit(
@@ -138,6 +143,9 @@ def gate(
         text contract is byte-identical to pre-feature behaviour.
         """
         if fmt == "json":
+            metrics = _citation_metrics_json(artifact_path_for_json, repo, verifier=verifier)
+            if code == SUCCESS and metrics is not None and not metrics["ok"]:
+                code, status, reason = VALIDATION_FAILURE, "fail", "citation evidence changed during verification"
             summary = {
                 "schema": "antemortem-gate-v1",
                 "document": str(document),
@@ -147,9 +155,7 @@ def gate(
                 "decision": decision,
                 "allowlist": sorted(allowed),
                 "exit_code": code,
-                "citation_metrics": _citation_metrics_json(
-                    artifact_path_for_json, repo
-                ),
+                "citation_metrics": metrics,
             }
             typer.echo(json.dumps(summary, indent=2, sort_keys=True))
         raise typer.Exit(code=code)
@@ -183,7 +189,7 @@ def gate(
             )
         _emit_and_exit(code=USAGE_ERROR, status="fail", reason="empty --allow allowlist")
 
-    lint_result = run_lint(document, repo)
+    lint_result = run_lint(document, repo, verifier=verifier)
     if not lint_result.ok:
         if fmt == "text":
             typer.secho(f"FAIL: {document.name} did not pass lint.", fg=typer.colors.RED, err=True)

@@ -17,6 +17,39 @@ README family: [English](README.md) · [한국어](README_KR.md) · [Easy start]
 pip install antemortem
 ```
 
+## Start here · Standalone use · Integration/Docking
+
+**Omega Aile** — Quiet precision. AI research guided by evidence.
+
+Prepare a pre-implementation risk document, classify it with a configured provider, then verify schema, disk citations and evidence bindings offline.
+
+Requires Python 3.11+. Installation needs internet.
+
+```bash
+python -m pip install antemortem==0.12.0
+antemortem init first-check
+antemortem doctor antemortem/first-check.md --repo .
+antemortem lint antemortem/first-check.md --repo .
+```
+
+The fresh scaffold is intentionally incomplete: doctor reports NOT_READY (exit 1), and lint also exits 1 for missing traps/files. Fill the change, trap rows and file list in the created document, then rerun both checks.
+
+init creates the packaged template; doctor previews inputs and lint checks the document without provider calls. A scaffold has no completed run artifact: the default gate must block until a real run exists. run requires a provider/key or a configured local Ollama server. A valid file:line proves location, not the truth of every claim.
+
+Repository antemortem-cli installs the PyPI distribution antemortem and import antemortem. It has no omega-lock runtime dependency. Its source-citation CI pins 12559db9c3e422c87dd0cabd785f056c85b44533 (omega-lock release 0.3.2). mini-antemortem-cli is a separate deterministic config classifier, not a submodule.
+
+[Docking contracts and runnable data handoff](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [Full guide](README.md).
+
+MCP: install the distribution with `[mcp]` and use its existing server executable. FastMCP support is bounded to MCP SDK `>=1.0.0,<2.0.0`; the tool names and schemas are unchanged.
+
+## Repeated citation checks and evidence limits
+
+For artifacts that cite the same source repeatedly, verification now reuses a bounded reader during each invocation. In a fixed offline comparison against the previous public release, a 2,000-line file cited 200 times required **1 source open instead of 400 for metrics, or 800 for lint/gate JSON**. This measures file I/O, not total runtime or model quality. [Method, results and migration](docs/citation_verification.md).
+
+`verified` means the path and lines exist and supplied evidence bindings match. It does not establish that the cited text supports the claim or that the program is correct. The legacy `fabricated` bucket also includes stale evidence and read failures; it does not diagnose intentional fabrication. `metrics`, lint, runtime citation audit, MCP and the Action now check supplied snippets and legacy hashes consistently. Existing JSON schemas and exit codes remain; malformed or stale bindings can now fail where metrics previously passed.
+
+
+
 ## Quick start
 
 ```bash
@@ -137,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hibou04-ops/antemortem-cli@v0.11.1
+      - uses: hibou04-ops/antemortem-cli@v0.12.0
         with:
           document: antemortem/my-feature.md
           repo: .
